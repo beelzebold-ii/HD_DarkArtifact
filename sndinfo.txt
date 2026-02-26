@@ -1,0 +1,7 @@
+$alias    blursphere/hallu0    imp/sight
+$alias    blursphere/hallu1    grunt/sight
+$alias    blursphere/hallu2    grunt/active
+$alias    blursphere/hallu3    demon/active
+$alias    blursphere/hallu4    world/riflefar
+$alias    blursphere/hallu5    world/rocketfar
+$alias    blursphere/hallu6    misc/gibbed

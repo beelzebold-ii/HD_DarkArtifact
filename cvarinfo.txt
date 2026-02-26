@@ -1,0 +1,4 @@
+server bool preciousblur_visualchanges = true;
+server bool preciousblur_talkative = true;
+server bool preciousblur_maxlevelbug = false;
+server int preciousblur_spawnpercent = 20;

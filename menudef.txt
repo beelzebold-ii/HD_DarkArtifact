@@ -1,0 +1,27 @@
+AddOptionMenu "OptionsMenu"{
+	SubMenu "Dark Artifact settings", "hd_darkartifactopts"
+}
+
+optionmenu "hd_darkartifactopts"{
+	Title "Dark Artifact"
+	StaticText " "
+	StaticText " "
+	StaticText "Server-wide settings"
+	StaticText " "
+	Slider "Percent spawnrate over blurspheres", preciousblur_spawnpercent, 0, 100, 10
+	StaticText " "
+	Option "Preserve lv13 blur glitches", preciousblur_maxlevelbug, "YesNo"
+	StaticText "Original behavior has a glitch where if you toggle a lv13"
+	StaticText "artifact off at the right (wrong) time it will repeat certain"
+	StaticText "effects almost every tick."
+	StaticText " "
+	Option "More sentient/talkative artifact", preciousblur_talkative, "YesNo"
+	StaticText "Toggles new hallucination lines which serve to give the player"
+	StaticText "more information, at the cost of making it a bit more sentient."
+	StaticText "Purists may prefer the old selection of dialogue."
+	StaticText " "
+	Option "Minor visual overhaul", preciousblur_visualchanges, "YesNo"
+	StaticText "Includes flickering the player between Fuzzy and Subtractive"
+	StaticText "rendering styles and giving the player the old shellshade's"
+	StaticText "dynamic lights at higher artifact levels."
+}

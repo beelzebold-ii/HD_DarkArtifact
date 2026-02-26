@@ -1,0 +1,1 @@
+cameratexture HDPBLRCAM 600 450
