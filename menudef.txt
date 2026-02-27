@@ -24,4 +24,10 @@ optionmenu "hd_darkartifactopts"{
 	StaticText "Includes flickering the player between Fuzzy and Subtractive"
 	StaticText "rendering styles and giving the player the old shellshade's"
 	StaticText "dynamic lights at higher artifact levels."
+	StaticText " "
+	Option "New interactions", preciousblur_newinteractions, "YesNo"
+	StaticText "Currently includes a power effect which can occasionally"
+	StaticText "recharge a portion of the user's active shields, and stims"
+	StaticText "providing a shortlived slight resistance to passive"
+	StaticText "aggravated damage buildup."
 }

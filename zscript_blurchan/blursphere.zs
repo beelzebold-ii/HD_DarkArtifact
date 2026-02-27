@@ -365,9 +365,10 @@ class HDPreciousBlurSphere:HDPickup{
 			// was that intentional?
 			// changed random min from 0 to -2 such that there's still a good chance for
 			// small wounds to patch
+			// [nkc] this feels way too fast, toning it down a bit.
 			bool trytoseal = false;
 			if(HDBleedingWound.woundcount(hdp)>random(-2,(BLUR_LEVELCAP - level) + 7)){
-				let wwwound = HDBleedingWound.findandpatch(hdp,0.4 + (level * 0.02));
+				let wwwound = HDBleedingWound.findandpatch(hdp,0.2 + (level * 0.02));
 				// [nkc] the above check may still return a high value with a lot of patched or sealed
 				// wounds. if we don't find an *open* wound to patch, we act like the check failed.
 				if(!wwwound){
@@ -404,7 +405,7 @@ class HDPreciousBlurSphere:HDPickup{
 				// this happens quite slowly at first, but very quickly at high levels
 				if(!random(0, max((BLUR_LEVELCAP - level) * 2 - 4, 2))){
 					if(HDBleedingWound.woundcount(hdp) > 0)
-						HDBleedingWound.findandpatch(hdp,0.08,HDBW_FINDPATCHED);
+						HDBleedingWound.findandpatch(hdp,0.04,HDBW_FINDPATCHED);
 				}
 			}
 		}
@@ -415,6 +416,31 @@ class HDPreciousBlurSphere:HDPickup{
 
 		//power.
 		if(!(xp%666)){
+			// [nkc] chance to react with any active shield core the bearer
+			// may have. shields are demon magicks, after all.
+			// base chance is 1/6, goes up every 3 levels (ie 1/5 > 1/4)
+			// caps out at being a 1/3 at level 9
+			// at level 13, always boost shields, since you'd need to actively
+			// be wearing it anyway for the effect to trigger
+			if(preciousblur_newinteractions){
+				if(level >= 13 || !random(0,max(2,5 - level/3))){
+					let shield = hdmagicshield(owner.findinventory("hdmagicshield"));
+					if(shield){
+						// [nkc] charges by 256 by default, chance to charge by 666
+						// from level 4 and onward, always charge by 666 by lv 10
+						int shieldcharge = (level <= random(4,10))?666:256;
+						// [nkc] don't overcharge shields
+						shieldcharge = min(shieldcharge,1024 - shield.amount);
+						owner.giveinventory("hdmagicshield",shieldcharge);
+						HDMagicShield.FlashSparks(owner);
+						// [nkc] aggravate.
+						if(!random(0,1))
+							hdp.aggravateddamage++;
+					}
+				}
+			}
+			
+			// [nkc] default Power code
 			bool nub=!level&&xp<1066;
 			if(nub||!random(0,15))owner.A_Log("You feel power growing in you.",true);
 			blockthingsiterator it=blockthingsiterator.create(owner,512);
@@ -489,7 +515,13 @@ class HDPreciousBlurSphere:HDPickup{
 				owner.A_Log(msg[int(clamp(randtickerfloat*msg.size(),0,msg.size()-1))],true);
 			}
 			if(!(xp%7)){
-				hdplayerpawn(owner).aggravateddamage++;
+				// [nkc] if the bearer is stimulated, aggravated damage is reduced
+				// this is just for funsies so as to add a bit more interaction
+				// one stim is 400 units, this means you never get *no* aggravation
+				// as that would kind of undermine things.
+				// however this effect still might not quite be negligable.
+				if(owner.countinv("hdstim")<random(100,400) && preciousblur_newinteractions)
+					hdplayerpawn(owner).aggravateddamage++;
 				// [nkc] modifying this message from "Precious." to be at least not identical
 				// to the other ones so you can tell, hey, you just got aggravated a lil.
 				if(!randticker[4])owner.A_Log("mine.",true);
@@ -515,6 +547,17 @@ class HDPreciousBlurSphere:HDPickup{
 		intensity=0;
 		owner.A_StartSound("imp/sight1",CHAN_BODY,volume:frandom(0.3,0.5),attenuation:8.);
 		super.detachfromowner();
+	}
+	
+	// [nkc] since this doesn't have access to hdest's internal player damagemobj,
+	// I have to give the balefire resistance through this function.
+	override void ModifyDamage(int damage,name damagetype,out int newdamage,bool passive,actor inflictor,actor source,int flags){
+		if(passive){
+			if(damagetype=="balefire")newdamage=max(1,damage-level*2);
+			// [nkc] don't want intensity to go below zero in this case, just for
+			// the player's sake lol (intensity -= 100 > intensity = 0)
+			else if(damagetype=="thermal")intensity = 0;
+		}
 	}
 }
 
@@ -587,6 +630,9 @@ class HDPreciousBlurOverlayHandler:EventHandler{
 					alpha:camalpha*0.6,scale:(2.0,2.0)*frandom[blurhud](0.99,1.01)
 				);
 				// [nkc] this is a really funny way to do what essentially amounts to a color blend lol
+				// actually I do understand that the player can only have one color blend at once
+				// I forgot abt that
+				// still I find this amusing
 				statusbar.drawimage(
 					"DUSTA0",(0,0),basestatusbar.DI_SCREEN_CENTER|basestatusbar.DI_ITEM_CENTER,
 					alpha:0.01*lv,scale:(1000,600)
@@ -599,6 +645,45 @@ class HDPreciousBlurOverlayHandler:EventHandler{
 	override void CheckReplacement(replaceevent e){
 		if(e.replacee == "hdblursphere" && random(1,100) <= preciousblur_spawnpercent){
 			e.replacement = "hdpreciousblursphere";
+		}
+	}
+	
+	// [nkc] if a Thing in the World is Damaged and has a blursphere, run a check
+	// to have the blursphere automagically equip itself to them.
+	// for players, this happens if incapacitated; for anything else, just if below
+	// 10% of its spawnhealth. only a cointoss to actually do it per damage tho.
+	// ofc, a player could just use it through the console.
+	override void WorldThingDamaged(worldevent e){
+		let blr = hdpreciousblursphere(e.thing.findinventory("hdpreciousblursphere"));
+		let hdp = hdplayerpawn(e.thing);
+		if(blr){
+			if(
+				(
+					(hdp && hdp.incapacitated)
+					|| e.thing.health <= e.thing.spawnhealth() * 0.10
+				)
+				&& !blr.worn
+				&& !random(0,1)
+			){
+				// [nkc] it will ofc bully you for this
+				if(preciousblur_talkative && !random(0,2)){
+					string msg[10];
+					msg[0]="see how much i do for you?";
+					msg[1]="let's not give up just yet";
+					msg[2]="you're nothing without me.";
+					msg[3]="you're welcome.";
+					msg[4]="thank me later";
+					msg[5]="you're only useful to me alive";
+					msg[6]="i thought you were supposed to be strong?";
+					msg[7]="nice one";
+					msg[8]="i hate you";
+					msg[9]="ew, what happened to your face";
+					e.thing.A_Log(msg[int(clamp(blr.randtickerfloat*msg.size(),0,msg.size()-1))],true);
+				}
+				e.thing.useinventory(blr);
+				// [nkc] and aggravate you a little too
+				if(hdp) hdp.aggravateddamage++;
+			}
 		}
 	}
 }
